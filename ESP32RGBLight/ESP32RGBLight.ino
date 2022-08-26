@@ -28,9 +28,9 @@ const char* WiFi_SSID		= "YOUR_WIFI_SSID"; // nama wifi anda
 const char* WiFi_Password	= "YOUR_WIFI_PASSWORD"; // password wifi anda
 const char* WiFi_HostName	= "yourHostName"; // nama host name device ini
 
-const char* MQTT_HEARTBEAT_TOPIC	= "/user/XXX/myRGB";			// sesuai path user (digenerate dari webapp)
-const char* MQTT_STATE_TOPIC		= "/user/XXX/myRGB/state";		// sesuai path user (digenerate dari webapp)
-const char* MQTT_COMMAND_TOPIC		= "/user/XXX/myRGB/command";	// sesuai path user (digenerate dari webapp)
+const char* MQTT_HEARTBEAT_TOPIC = "/user/XXX/myRGB";			// sesuai path user (digenerate dari webapp)
+const char* MQTT_STATE_TOPIC = "/user/XXX/myRGB/state";		// sesuai path user (digenerate dari webapp)
+const char* MQTT_COMMAND_TOPIC = "/user/XXX/myRGB/command";	// sesuai path user (digenerate dari webapp)
 
 uint32_t HeartbeatInterval = 60000; // setiap 60 detik
 enum colorModes { RGB };
@@ -62,7 +62,7 @@ deviceState_t currentState;
 
 enum commandType { OnOff, BrightnessAbsolute, BrightnessRelative, ColorAbsolute, UNKNOWN };
 
-commandType getCommandType(const char * value) {
+commandType getCommandType(const char* value) {
 	if (strcmp(value, "OnOff") == 0) {
 		return commandType::OnOff;
 	}
@@ -86,24 +86,24 @@ void publishState() {
 	doc["brightness"] = currentState.brightness;
 	switch (currentState.colorMode)
 	{
-		case RGB:
-			doc["color"]["spectrumRgb"] = currentState.colorRGB.value;
-			break;
-		default:
-			break;
+	case RGB:
+		doc["color"]["spectrumRgb"] = currentState.colorRGB.value;
+		break;
+	default:
+		break;
 	}
 
 	serializeJson(doc, message);
 
 	wrapper.publish(MQTT_STATE_TOPIC, message.c_str());
 }
-void OnCommand(JsonDocument &doc) {
+void OnCommand(JsonDocument& doc) {
 	if (doc["command"].isNull())
 		return;
 	commandType cmdType = getCommandType(doc["command"]);
 	JsonVariant data = doc["data"];
 
-	switch(cmdType) {
+	switch (cmdType) {
 		case OnOff:
 			{
 				if (!data["on"].is<bool>())
@@ -136,7 +136,7 @@ void OnCommand(JsonDocument &doc) {
 				else
 					return;
 				currentState.brightness = constrain(currentState.brightness, 0, 100);
-				
+
 				// Eksekusi perintah brightness
 				// Contoh penggunaan DAC ESP32 pada pin 25
 				// int analogValue = map(currentState.brightness, 0, 100, 0, 255);
@@ -170,7 +170,7 @@ void OnCommand(JsonDocument &doc) {
 				// Contoh penggunaan DAC ESP32 pada pin 25
 				// dacWrite(25, analogValue);
 				/* YOUR CODE HERE */
-				
+
 				if (currentState.on) {
 					strip.clear();
 					uint8_t val = map(currentState.brightness, 0, 100, 0, 255);
@@ -189,7 +189,7 @@ void OnCommand(JsonDocument &doc) {
 				}
 				else
 					return;
-				
+
 				/* YOUR CODE HERE */
 				if (currentState.on) {
 					strip.clear();
@@ -199,8 +199,7 @@ void OnCommand(JsonDocument &doc) {
 						strip.setPixelColor(i, currentState.colorRGB.argb.r, currentState.colorRGB.argb.g, currentState.colorRGB.argb.b);
 					strip.show();
 				}
-
-            }
+			}
 			break;
 		default:
 			return;
@@ -225,29 +224,29 @@ void setup() {
 	wrapper.setDebugger(&Serial);
 	wrapper.setWiFi(WiFi_HostName, WiFi_SSID, WiFi_Password);
 	wrapper.setMqttServer(MQTT_Server, MQTT_username, MQTT_password);
-	wrapper.initWiFi();	
+	wrapper.initWiFi();
 
 	// Heartbeat, untuk update device status online
 	wrapper.setPublisher(MQTT_HEARTBEAT_TOPIC, HeartbeatInterval, [&] {
 		Serial.println("HEARTBEAT");
 		return ""; // message kosong
-	});
+		});
 	wrapper.setSubscription(MQTT_COMMAND_TOPIC, [&](const char* message) {
 		Serial.print("Message Received : ");
 		Serial.print(message);
 		Serial.println();
-        
+
 		if (sizeof(message) > 0) {
 			DynamicJsonDocument doc(512);
 			deserializeJson(doc, message);
 			OnCommand(doc);
 		}
-	});
+		});
 
 
 	wrapper.initMqtt();
 }
 
 void loop() {
-    wrapper.loop();
+	wrapper.loop();
 }
